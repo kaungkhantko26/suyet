@@ -99,6 +99,61 @@ export async function authenticate(email: string, password: string, ctx: Ctx): P
 
 export const requiresSecondFactor = (role: Role, enrolled: boolean) => isPrivileged(role) || enrolled;
 
+interface GoogleProfile { sub: string; email: string; emailVerified: boolean; name: string }
+
+/**
+ * Finds or creates the local account for a verified Google identity. Matches by the linked
+ * `Account` row first (stable across email changes), then falls back to matching an existing
+ * password account by email so a student who signed up normally can also sign in with Google.
+ * A brand-new account is always STUDENT; the caller decides whether to offer an organizer
+ * application afterwards (Google doesn't know a student from an organizer).
+ */
+export async function findOrCreateGoogleUser(profile: GoogleProfile, locale: string, ctx: Ctx): Promise<AuthResult<{ userId: string; role: Role; mfaEnrolled: boolean; isNewUser: boolean }>> {
+  const rl = await rateLimit(`oauth:google:${ctx.ip}`, 20, 900); // 20 attempts per IP per 15 min
+  if (!rl.allowed) {
+    await recordSecurityEvent({ type: "auth.oauth_rate_limited", severity: "LOW", outcome: "blocked", ip: ctx.ip, requestId: ctx.requestId });
+    return { ok: false, error: "tooMany" };
+  }
+  const existingAccount = await db.account.findUnique({
+    where: { provider_providerAccountId: { provider: "google", providerAccountId: profile.sub } },
+    include: { user: { include: { mfa: { select: { enabledAt: true } } } } },
+  });
+  if (existingAccount) {
+    const u = existingAccount.user;
+    if (u.status !== "ACTIVE" || u.deletedAt) {
+      await recordSecurityEvent({ type: "auth.login_suspended", severity: "LOW", outcome: "blocked", actorId: u.id, ip: ctx.ip, requestId: ctx.requestId });
+      return { ok: false, error: "suspended" };
+    }
+    await recordSecurityEvent({ type: "auth.oauth_login", severity: "INFO", actorId: u.id, ip: ctx.ip, requestId: ctx.requestId });
+    return { ok: true, userId: u.id, role: u.role, mfaEnrolled: !!u.mfa?.enabledAt, isNewUser: false };
+  }
+
+  const byEmail = await db.user.findFirst({ where: { email: profile.email, deletedAt: null }, include: { mfa: { select: { enabledAt: true } } } });
+  if (byEmail) {
+    if (byEmail.status !== "ACTIVE") {
+      await recordSecurityEvent({ type: "auth.login_suspended", severity: "LOW", outcome: "blocked", actorId: byEmail.id, ip: ctx.ip, requestId: ctx.requestId });
+      return { ok: false, error: "suspended" };
+    }
+    await db.account.create({ data: { userId: byEmail.id, provider: "google", providerAccountId: profile.sub } });
+    await recordSecurityEvent({ type: "auth.oauth_linked", severity: "LOW", actorId: byEmail.id, ip: ctx.ip, requestId: ctx.requestId });
+    return { ok: true, userId: byEmail.id, role: byEmail.role, mfaEnrolled: !!byEmail.mfa?.enabledAt, isNewUser: false };
+  }
+
+  const user = await db.user.create({
+    data: {
+      name: profile.name, email: profile.email, passwordHash: null, locale,
+      role: "STUDENT",
+      emailVerified: profile.emailVerified ? new Date() : null,
+      profile: { create: { displayName: profile.name } },
+      notificationPreference: { create: { unsubscribeToken: randomToken(24) } },
+      accounts: { create: { provider: "google", providerAccountId: profile.sub } },
+    },
+  });
+  if (!profile.emailVerified) await sendVerificationEmail(user.id);
+  await recordSecurityEvent({ type: "auth.oauth_register", severity: "INFO", actorId: user.id, ip: ctx.ip, requestId: ctx.requestId });
+  return { ok: true, userId: user.id, role: user.role, mfaEnrolled: false, isNewUser: true };
+}
+
 export async function verifyEmail(token: string): Promise<boolean> {
   const rec = await db.verificationToken.findUnique({ where: { tokenHash: sha256(token) } });
   if (!rec || rec.type !== "VERIFY_EMAIL" || rec.usedAt || rec.expiresAt < new Date()) return false;

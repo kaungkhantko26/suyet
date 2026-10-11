@@ -8,6 +8,7 @@ import { forgotAction, loginAction, registerAction, registerOrganizerAction, res
 import { Alert } from "@/components/ui/misc";
 import { Button, ButtonLink } from "@/components/ui/button";
 import { Field, Input, Select, Textarea } from "@/components/ui/fields";
+import { GoogleButton } from "./google-button";
 import { useT } from "@/i18n/client";
 import { forgotSchema, loginSchema, registerOrganizerSchema, registerSchema, resetSchema } from "@/lib/validation/auth";
 
@@ -45,10 +46,19 @@ export function AuthForm({ mode, token }: { mode: Mode; token?: string }) {
   });
 
   const isReg = mode === "register" || mode === "registerOrganizer";
+  const showGoogle = mode === "login" || isReg;
   const labels = { login: t("auth.submitLogin"), register: t("auth.submitRegister"), registerOrganizer: t("auth.submitOrganizer"), forgot: t("auth.sendLink"), reset: t("auth.setPassword") };
   return (
     <form onSubmit={submit} noValidate className={mode === "registerOrganizer" ? "grid gap-x-10 gap-y-4 md:grid-cols-2" : "space-y-5"}>
       {banner && <Alert tone={banner.tone} className="md:col-span-2">{banner.text}</Alert>}
+      {showGoogle && (
+        <div className={mode === "registerOrganizer" ? "md:col-span-2" : undefined}>
+          <GoogleButton intent={mode === "registerOrganizer" ? "organizer" : undefined} />
+          <div className="my-5 flex items-center gap-3 text-xs text-muted">
+            <span className="h-px flex-1 bg-border" />{t("auth.orContinueWith")}<span className="h-px flex-1 bg-border" />
+          </div>
+        </div>
+      )}
       <div className={mode === "registerOrganizer" ? "space-y-4" : "space-y-5"}>
         <p className={mode === "registerOrganizer" ? "text-sm font-semibold" : "hidden"}>{t("auth.yourAccount")}</p>
       {isReg && (
