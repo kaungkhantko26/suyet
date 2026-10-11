@@ -1,0 +1,107 @@
+name: CI
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# Least privilege for the default token. Pull requests from forks get no secrets at all (GitHub default).
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Typecheck, lint, unit + integration tests, build
+    runs-on: ubuntu-24.04
+    services:
+      postgres:
+        image: postgres:16.6-alpine
+        env: { POSTGRES_USER: letstech, POSTGRES_PASSWORD: letstech, POSTGRES_DB: letstech_events_test }
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U letstech" --health-interval 5s --health-timeout 5s --health-retries 20
+    env:
+      DATABASE_URL: postgresql://letstech:letstech@localhost:5432/letstech_events_test
+      TEST_DATABASE_URL: postgresql://letstech:letstech@localhost:5432/letstech_events_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci --ignore-scripts          # lockfile integrity: fails if package-lock.json and package.json disagree
+      - run: npx prisma generate
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm test
+      - run: npm run build
+
+  e2e:
+    name: End-to-end (Playwright)
+    runs-on: ubuntu-24.04
+    needs: verify
+    services:
+      postgres:
+        image: postgres:16.6-alpine
+        env: { POSTGRES_USER: letstech, POSTGRES_PASSWORD: letstech, POSTGRES_DB: letstech_events_e2e }
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U letstech" --health-interval 5s --health-timeout 5s --health-retries 20
+    env:
+      DATABASE_URL: postgresql://letstech:letstech@localhost:5432/letstech_events_e2e
+      E2E_DATABASE_URL: postgresql://letstech:letstech@localhost:5432/letstech_events_e2e
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci --ignore-scripts
+      - run: npx prisma generate
+      - run: npx playwright install --with-deps chromium
+      - run: npm run build
+      - run: npm run test:e2e
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with: { name: playwright-traces, path: test-results/, retention-days: 7 }
+
+  dependency-scan:
+    name: Dependency vulnerabilities
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      # Fails the build on HIGH/CRITICAL advisories in production dependencies; accepted exceptions are listed (with expiry) in audit-ci.jsonc.
+      - run: npx --yes audit-ci@7 --config audit-ci.jsonc
+
+  secret-scan:
+    name: Secret scanning (gitleaks)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - uses: gitleaks/gitleaks-action@v2
+        env: { GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}" }
+
+  sast:
+    name: Static analysis (Semgrep)
+    runs-on: ubuntu-24.04
+    container: { image: semgrep/semgrep:1.97.0 }
+    steps:
+      - uses: actions/checkout@v4
+      - run: semgrep scan --config p/default --config p/typescript --config p/react --config p/nextjs --config p/owasp-top-ten --error --metrics=off src prisma scripts
+
+  container-scan:
+    name: Container image scan (Trivy)
+    runs-on: ubuntu-24.04
+    needs: verify
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build --target web -t lte-web:ci .
+      - run: docker build --target tools -t lte-tools:ci .
+      - uses: aquasecurity/trivy-action@0.28.0
+        with: { image-ref: "lte-web:ci", severity: "HIGH,CRITICAL", exit-code: "1", ignore-unfixed: true }
+      - uses: aquasecurity/trivy-action@0.28.0
+        with: { image-ref: "lte-tools:ci", severity: "HIGH,CRITICAL", exit-code: "1", ignore-unfixed: true }
+      - uses: aquasecurity/trivy-action@0.28.0
+        with: { scan-type: config, scan-ref: ".", severity: "HIGH,CRITICAL", exit-code: "1" }   # Dockerfile / compose misconfiguration

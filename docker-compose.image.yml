@@ -1,0 +1,13 @@
+# Override to run prebuilt images from GHCR instead of building on the host.
+#   docker compose -f docker-compose.yml -f docker-compose.proxy.yml -f docker-compose.image.yml pull
+#   docker compose -f docker-compose.yml -f docker-compose.proxy.yml -f docker-compose.image.yml up -d
+services:
+  migrate:
+    build: !reset null
+    image: ${TOOLS_IMAGE:?set TOOLS_IMAGE=ghcr.io/<owner>/<repo>-tools:latest}
+  web:
+    build: !reset null
+    image: ${WEB_IMAGE:?set WEB_IMAGE=ghcr.io/<owner>/<repo>-web:latest}
+  worker:
+    build: !reset null
+    image: ${TOOLS_IMAGE:?set TOOLS_IMAGE=ghcr.io/<owner>/<repo>-tools:latest}

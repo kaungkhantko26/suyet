@@ -1,0 +1,921 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ───────────── Enums ─────────────
+
+enum Role {
+  STUDENT
+  ORGANIZER
+  MODERATOR
+  ADMIN
+  SUPER_ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+enum TokenType {
+  VERIFY_EMAIL
+  RESET_PASSWORD
+}
+
+enum EventFormat {
+  ONSITE
+  ONLINE
+  HYBRID
+}
+
+/// Where participants register: on the organizer's own site, or with a form hosted here.
+enum RegistrationMode {
+  EXTERNAL
+  ON_PLATFORM
+}
+
+enum RegistrationFieldType {
+  SHORT_TEXT
+  LONG_TEXT
+  EMAIL
+  PHONE
+  NUMBER
+  DATE
+  SINGLE_CHOICE
+  MULTIPLE_CHOICE
+  DROPDOWN
+  CHECKBOX
+}
+
+/// SUBMITTED = awaiting the organizer's decision. APPROVED = allowed to participate. REJECTED = not accepted.
+enum RegistrationStatus {
+  SUBMITTED
+  APPROVED
+  REJECTED
+  WITHDRAWN
+}
+
+enum SkillLevel {
+  ALL_LEVELS
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+}
+
+/// Public lifecycle visibility. Separate from review (SubmissionStatus).
+enum PublishState {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum SubmissionStatus {
+  DRAFT
+  PENDING_REVIEW
+  CHANGES_REQUESTED
+  APPROVED
+  REJECTED
+}
+
+enum ReviewDecision {
+  APPROVED
+  REJECTED
+  CHANGES_REQUESTED
+}
+
+enum VerificationStatus {
+  UNVERIFIED
+  PENDING_VERIFICATION
+  VERIFIED
+  NEEDS_REVIEW
+}
+
+enum LocationType {
+  REGION
+  STATE
+  UNION_TERRITORY
+  ONLINE
+  NATIONWIDE
+  INTERNATIONAL
+}
+
+enum OrganizerType {
+  UNIVERSITY
+  UNIVERSITY_CLUB
+  TECH_COMMUNITY
+  COMPANY
+  NONPROFIT
+  INDEPENDENT
+}
+
+enum OrganizerStatus {
+  PENDING
+  VERIFIED
+  UNVERIFIED
+  SUSPENDED
+}
+
+enum MemberRole {
+  OWNER
+  EDITOR
+}
+
+enum ApplicationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum SourceType {
+  OFFICIAL_WEBSITE
+  PUBLIC_API
+  RSS_FEED
+  MANUAL_SUBMISSION
+  COMMUNITY_SUBMISSION
+  AUTHORIZED_AUTOMATION
+}
+
+enum SourceStatus {
+  ACTIVE
+  PAUSED
+  UNREACHABLE
+  ERROR
+}
+
+enum CandidateStatus {
+  PENDING_REVIEW
+  APPROVED
+  REJECTED
+  DUPLICATE
+}
+
+enum NotificationType {
+  NEW_MATCHING_EVENT
+  REGISTRATION_APPROVED
+  REGISTRATION_REJECTED
+  REGISTRATION_CLOSING_SOON
+  EVENT_STARTING_SOON
+  EVENT_UPDATED
+  EVENT_CANCELLED
+}
+
+enum DeliveryChannel {
+  EMAIL
+  IN_APP
+  TELEGRAM
+  WEB_PUSH
+}
+
+enum DeliveryStatus {
+  PENDING
+  SENT
+  FAILED
+  SKIPPED
+}
+
+enum ReportReason {
+  INCORRECT_DATE
+  INCORRECT_LINK
+  CANCELLED
+  SCAM_OR_UNSAFE
+  DUPLICATE
+  OTHER
+}
+
+enum ReportStatus {
+  OPEN
+  INVESTIGATING
+  RESOLVED
+  DISMISSED
+}
+
+enum JobStatus {
+  PENDING
+  RUNNING
+  DONE
+  FAILED
+}
+
+enum AnalyticsType {
+  PAGE_VIEW
+  SEARCH
+  REGISTRATION_CLICK
+  SAVE
+}
+
+// ───────────── Auth ─────────────
+
+model User {
+  id            String     @id @default(uuid()) @db.Uuid
+  email         String     @unique
+  emailVerified DateTime?
+  passwordHash  String?
+  name          String
+  role          Role       @default(STUDENT)
+  status        UserStatus @default(ACTIVE)
+  locale        String     @default("en")
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  deletedAt     DateTime?
+
+  accounts               Account[]
+  sessions               Session[]
+  profile                UserProfile?
+  interests              UserInterest[]
+  memberships            OrganizerMember[]
+  applications           OrganizerApplication[]
+  savedEvents            SavedEvent[]
+  notifications          Notification[]
+  notificationPreference NotificationPreference?
+  submissions            EventSubmission[]
+  reports                EventReport[]
+  auditLogs              AdminAuditLog[]
+  mfa                    MfaCredential?
+  recoveryCodes          MfaRecoveryCode[]
+  registrations          Registration[]
+
+  @@index([role])
+  @@index([status])
+}
+
+/// Reserved for future OAuth providers.
+model Account {
+  id                String @id @default(uuid()) @db.Uuid
+  userId            String @db.Uuid
+  provider          String
+  providerAccountId String
+  user              User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model Session {
+  id            String    @id @default(uuid()) @db.Uuid
+  tokenHash     String    @unique
+  userId        String    @db.Uuid
+  expiresAt     DateTime
+  userAgent     String?
+  lastSeenAt    DateTime  @default(now())
+  /// Set when the session passed a second factor. Privileged roles require it.
+  mfaVerifiedAt DateTime?
+  createdAt     DateTime  @default(now())
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model VerificationToken {
+  id         String    @id @default(uuid()) @db.Uuid
+  identifier String
+  tokenHash  String    @unique
+  type       TokenType
+  expiresAt  DateTime
+  usedAt     DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([identifier, type])
+}
+
+model UserProfile {
+  id             String   @id @default(uuid()) @db.Uuid
+  userId         String   @unique @db.Uuid
+  displayName    String?
+  imageUrl       String?
+  city           String?
+  locationId     String?  @db.Uuid
+  university     String?
+  educationLevel String?
+  skills         String[]
+  bio            String?
+  hideUniversity Boolean  @default(false)
+  hideSkills     Boolean  @default(false)
+  hideBio        Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  location Location? @relation(fields: [locationId], references: [id])
+}
+
+model UserInterest {
+  userId     String        @db.Uuid
+  categoryId String        @db.Uuid
+  user       User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category   EventCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@id([userId, categoryId])
+  @@index([categoryId])
+}
+
+// ───────────── Reference data ─────────────
+
+model Location {
+  id        String       @id @default(uuid()) @db.Uuid
+  slug      String       @unique
+  nameEn    String
+  nameMy    String
+  type      LocationType
+  sortOrder Int          @default(0)
+  isActive  Boolean      @default(true)
+
+  events     Event[]
+  organizers Organizer[]
+  profiles   UserProfile[]
+
+  @@index([type, sortOrder])
+}
+
+model EventCategory {
+  id        String   @id @default(uuid()) @db.Uuid
+  slug      String   @unique
+  nameEn    String
+  nameMy    String
+  icon      String   @default("sparkles")
+  sortOrder Int      @default(0)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  events    EventCategoryRelation[]
+  interests UserInterest[]
+
+  @@index([isActive, sortOrder])
+}
+
+// ───────────── Organizers ─────────────
+
+model Organizer {
+  id                   String          @id @default(uuid()) @db.Uuid
+  slug                 String          @unique
+  name                 String
+  type                 OrganizerType
+  logoUrl              String?
+  description          String?
+  website              String?
+  facebook             String?
+  telegram             String?
+  contactEmail         String?
+  locationId           String?         @db.Uuid
+  status               OrganizerStatus @default(UNVERIFIED)
+  /// Evidence for the Verified badge (granted by admins only; revocable).
+  verifiedAt           DateTime?
+  verifiedById         String?         @db.Uuid
+  verificationMethod   String?
+  verificationEvidence String?
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @updatedAt
+  deletedAt            DateTime?
+
+  location     Location?              @relation(fields: [locationId], references: [id])
+  members      OrganizerMember[]
+  events       Event[]
+  applications OrganizerApplication[]
+  submissions  EventSubmission[]
+
+  @@index([status])
+  @@index([type])
+}
+
+model OrganizerMember {
+  organizerId String     @db.Uuid
+  userId      String     @db.Uuid
+  role        MemberRole @default(OWNER)
+  createdAt   DateTime   @default(now())
+  organizer   Organizer  @relation(fields: [organizerId], references: [id], onDelete: Cascade)
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([organizerId, userId])
+  @@index([userId])
+}
+
+model OrganizerApplication {
+  id           String            @id @default(uuid()) @db.Uuid
+  userId       String            @db.Uuid
+  name         String
+  type         OrganizerType
+  description  String
+  website      String?
+  contactEmail String
+  evidenceUrl  String?
+  status       ApplicationStatus @default(PENDING)
+  reviewNotes  String?
+  reviewedById String?           @db.Uuid
+  reviewedAt   DateTime?
+  organizerId  String?           @db.Uuid
+  createdAt    DateTime          @default(now())
+
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organizer Organizer? @relation(fields: [organizerId], references: [id])
+
+  @@index([status, createdAt])
+  @@index([userId])
+}
+
+// ───────────── Events ─────────────
+
+model Event {
+  id                   String           @id @default(uuid()) @db.Uuid
+  slug                 String           @unique
+  title                String
+  shortDescription     String
+  description          String
+  bannerUrl            String?
+  startAt              DateTime
+  endAt                DateTime?
+  registrationDeadline DateTime?
+  format               EventFormat
+  country              String           @default("Myanmar")
+  locationId           String?          @db.Uuid
+  city                 String?
+  venue                String?
+  address              String?
+  onlineUrl            String?
+  registrationMode     RegistrationMode @default(EXTERNAL)
+  registrationUrl      String?
+  sourceUrl            String?
+  eligibility          String?
+  skillLevel           SkillLevel       @default(ALL_LEVELS)
+  requirements         String?
+  feeAmount            Int              @default(0)
+  currency             String           @default("MMK")
+  teamAllowed          Boolean          @default(false)
+  minTeamSize          Int?
+  maxTeamSize          Int?
+  prizes               String?
+  schedule             Json?
+  contactInfo          String?
+  organizerId          String           @db.Uuid
+  sourceId             String?          @db.Uuid
+  isDemo               Boolean          @default(false)
+
+  publishState               PublishState @default(DRAFT)
+  publishedAt                DateTime?
+  cancelled                  Boolean      @default(false)
+  registrationClosedOverride Boolean      @default(false)
+  featured                   Boolean      @default(false)
+
+  verificationStatus VerificationStatus @default(UNVERIFIED)
+  verifiedAt         DateTime?
+  verifiedById       String?            @db.Uuid
+  verificationNotes  String?
+  lastVerifiedAt     DateTime?
+
+  /// Maintained by a database trigger (see migration). Never written by the app.
+  searchVector Unsupported("tsvector")?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  organizer        Organizer               @relation(fields: [organizerId], references: [id])
+  location         Location?               @relation(fields: [locationId], references: [id])
+  source           EventSource?            @relation(fields: [sourceId], references: [id])
+  categories       EventCategoryRelation[]
+  verifications    EventVerification[]
+  submissions      EventSubmission[]
+  saved            SavedEvent[]
+  reports          EventReport[]
+  notifications    Notification[]
+  candidates       EventCandidate[]
+  analytics        AnalyticsEvent[]
+  registrationForm RegistrationForm?
+  registrations    Registration[]
+
+  @@index([publishState, startAt])
+  @@index([publishState, registrationDeadline])
+  @@index([organizerId])
+  @@index([locationId])
+  @@index([featured, publishState])
+  @@index([verificationStatus])
+  @@index([deletedAt])
+  @@index([searchVector], type: Gin)
+}
+
+model EventCategoryRelation {
+  eventId    String        @db.Uuid
+  categoryId String        @db.Uuid
+  event      Event         @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  category   EventCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@id([eventId, categoryId])
+  @@index([categoryId])
+}
+
+model EventSource {
+  id                  String       @id @default(uuid()) @db.Uuid
+  name                String
+  url                 String
+  normalizedUrl       String       @unique
+  type                SourceType
+  organization        String?
+  status              SourceStatus @default(ACTIVE)
+  lastCheckedAt       DateTime?
+  consecutiveFailures Int          @default(0)
+  lastError           String?
+  reliabilityNotes    String?
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
+
+  events     Event[]
+  candidates EventCandidate[]
+
+  @@index([status])
+}
+
+model EventVerification {
+  id                String             @id @default(uuid()) @db.Uuid
+  eventId           String             @db.Uuid
+  status            VerificationStatus
+  verifiedById      String?            @db.Uuid
+  officialSourceUrl String?
+  notes             String?
+  method            String?
+  evidence          Json?
+  riskIndicators    Json?
+  createdAt         DateTime           @default(now())
+  event             Event              @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@index([eventId, createdAt])
+}
+
+model EventCandidate {
+  id                        String          @id @default(uuid()) @db.Uuid
+  status                    CandidateStatus @default(PENDING_REVIEW)
+  idempotencyKey            String          @unique
+  title                     String
+  description               String?
+  categoryName              String?
+  organizerName             String?
+  sourceUrl                 String
+  normalizedSourceUrl       String
+  registrationUrl           String?
+  normalizedRegistrationUrl String?
+  startAt                   DateTime?
+  endAt                     DateTime?
+  registrationDeadline      DateTime?
+  format                    EventFormat?
+  locationText              String?
+  /// Fields the source did not provide. Stored as unknown, never invented.
+  missingFields             String[]
+  validationIssues          String[]
+  duplicateOfEventId        String?         @db.Uuid
+  duplicateReasons          String[]
+  rawPayload                Json
+  sourceId                  String?         @db.Uuid
+  reviewedById              String?         @db.Uuid
+  reviewedAt                DateTime?
+  reviewNotes               String?
+  promotedEventId           String?         @db.Uuid
+  createdAt                 DateTime        @default(now())
+  updatedAt                 DateTime        @updatedAt
+
+  source      EventSource? @relation(fields: [sourceId], references: [id])
+  duplicateOf Event?       @relation(fields: [duplicateOfEventId], references: [id])
+
+  @@index([status, createdAt])
+  @@index([normalizedSourceUrl])
+  @@index([normalizedRegistrationUrl])
+}
+
+model EventSubmission {
+  id            String           @id @default(uuid()) @db.Uuid
+  eventId       String           @db.Uuid
+  organizerId   String           @db.Uuid
+  submittedById String           @db.Uuid
+  status        SubmissionStatus @default(PENDING_REVIEW)
+  /// For edits to an already published event: proposed field values awaiting review.
+  changes       Json?
+  isUpdate      Boolean          @default(false)
+  /// Automated risk indicators for the human reviewer. Never grants approval or verification.
+  riskReport    Json?
+  submittedAt   DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  event       Event         @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  organizer   Organizer     @relation(fields: [organizerId], references: [id])
+  submittedBy User          @relation(fields: [submittedById], references: [id])
+  reviews     EventReview[]
+
+  @@index([status, submittedAt])
+  @@index([eventId])
+  @@index([organizerId])
+}
+
+model EventReview {
+  id           String          @id @default(uuid()) @db.Uuid
+  submissionId String          @db.Uuid
+  reviewerId   String          @db.Uuid
+  decision     ReviewDecision
+  notes        String?
+  createdAt    DateTime        @default(now())
+  submission   EventSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+
+  @@index([submissionId])
+}
+
+// ───────────── Student features ─────────────
+
+model SavedEvent {
+  userId    String   @db.Uuid
+  eventId   String   @db.Uuid
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@id([userId, eventId])
+  @@index([eventId])
+}
+
+model NotificationPreference {
+  id                String   @id @default(uuid()) @db.Uuid
+  userId            String   @unique @db.Uuid
+  locationSlugs     String[]
+  onlineOnly        Boolean  @default(false)
+  deadlineReminders Boolean  @default(true)
+  newEventAlerts    Boolean  @default(true)
+  emailEnabled      Boolean  @default(true)
+  inAppEnabled      Boolean  @default(true)
+  unsubscribeToken  String   @unique
+  updatedAt         DateTime @updatedAt
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model NewsletterSubscriber {
+  id               String    @id @default(uuid()) @db.Uuid
+  email            String    @unique
+  locale           String    @default("en")
+  unsubscribeToken String    @unique
+  confirmedAt      DateTime?
+  unsubscribedAt   DateTime?
+  createdAt        DateTime  @default(now())
+}
+
+model Notification {
+  id         String                 @id @default(uuid()) @db.Uuid
+  userId     String                 @db.Uuid
+  type       NotificationType
+  eventId    String?                @db.Uuid
+  title      String
+  body       String
+  /// Prevents duplicate notifications for the same user/type/event/window.
+  dedupeKey  String                 @unique
+  readAt     DateTime?
+  createdAt  DateTime               @default(now())
+  user       User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  event      Event?                 @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  deliveries NotificationDelivery[]
+
+  @@index([userId, readAt, createdAt])
+}
+
+model NotificationDelivery {
+  id             String          @id @default(uuid()) @db.Uuid
+  notificationId String          @db.Uuid
+  channel        DeliveryChannel
+  status         DeliveryStatus  @default(PENDING)
+  attempts       Int             @default(0)
+  error          String?
+  sentAt         DateTime?
+  createdAt      DateTime        @default(now())
+  notification   Notification    @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+
+  @@unique([notificationId, channel])
+  @@index([status])
+}
+
+model EventReport {
+  id              String       @id @default(uuid()) @db.Uuid
+  eventId         String       @db.Uuid
+  reporterId      String?      @db.Uuid
+  reason          ReportReason
+  details         String
+  status          ReportStatus @default(OPEN)
+  resolvedById    String?      @db.Uuid
+  resolutionNotes String?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  event           Event        @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  reporter        User?        @relation(fields: [reporterId], references: [id])
+
+  @@index([status, createdAt])
+  @@index([eventId])
+}
+
+// ───────────── Platform ─────────────
+
+model AdminAuditLog {
+  id         String   @id @default(uuid()) @db.Uuid
+  adminId    String   @db.Uuid
+  action     String
+  targetType String
+  targetId   String?
+  details    Json?
+  createdAt  DateTime @default(now())
+  admin      User     @relation(fields: [adminId], references: [id])
+
+  @@index([adminId])
+  @@index([targetType, targetId])
+  @@index([createdAt])
+}
+
+model AnalyticsEvent {
+  id           String        @id @default(uuid()) @db.Uuid
+  type         AnalyticsType
+  eventId      String?       @db.Uuid
+  categorySlug String?
+  query        String?
+  createdAt    DateTime      @default(now())
+  event        Event?        @relation(fields: [eventId], references: [id], onDelete: SetNull)
+
+  @@index([type, createdAt])
+  @@index([eventId, type])
+}
+
+model Job {
+  id          String    @id @default(uuid()) @db.Uuid
+  type        String
+  payload     Json
+  status      JobStatus @default(PENDING)
+  runAt       DateTime  @default(now())
+  attempts    Int       @default(0)
+  maxAttempts Int       @default(5)
+  lockedAt    DateTime?
+  lastError   String?
+  dedupeKey   String?   @unique
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([status, runAt])
+}
+
+model RateLimit {
+  key     String   @id
+  count   Int
+  resetAt DateTime
+
+  @@index([resetAt])
+}
+
+model SiteSetting {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @updatedAt
+}
+
+model ContactMessage {
+  id        String    @id @default(uuid()) @db.Uuid
+  name      String
+  email     String
+  message   String
+  handledAt DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([handledAt, createdAt])
+}
+
+enum SecuritySeverity {
+  INFO
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum AlertStatus {
+  OPEN
+  ACKNOWLEDGED
+}
+
+/// Append-only (enforced by trigger): authentication failures, privilege changes, webhook failures, URL risk hits.
+model SecurityEvent {
+  id           String           @id @default(uuid()) @db.Uuid
+  type         String
+  severity     SecuritySeverity @default(INFO)
+  outcome      String           @default("success")
+  actorId      String?          @db.Uuid
+  /// Keyed hash of the client IP (not the IP itself).
+  ipHash       String?
+  requestId    String?
+  resourceType String?
+  resourceId   String?
+  metadata     Json?
+  createdAt    DateTime         @default(now())
+
+  @@index([type, createdAt])
+  @@index([severity, createdAt])
+  @@index([actorId])
+}
+
+model SecurityAlert {
+  id        String           @id @default(uuid()) @db.Uuid
+  kind      String
+  severity  SecuritySeverity
+  windowKey String           @unique
+  summary   String
+  status    AlertStatus      @default(OPEN)
+  ackedById String?          @db.Uuid
+  createdAt DateTime         @default(now())
+
+  @@index([status, createdAt])
+}
+
+/// TOTP second factor. The secret is AES-256-GCM encrypted at rest.
+model MfaCredential {
+  id           String    @id @default(uuid()) @db.Uuid
+  userId       String    @unique @db.Uuid
+  secretEnc    String
+  enabledAt    DateTime?
+  /// Last accepted TOTP time-step, to reject code reuse.
+  lastUsedStep Int?
+  createdAt    DateTime  @default(now())
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model MfaRecoveryCode {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @db.Uuid
+  codeHash  String
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+/// Request-signature identifiers already seen (replay protection for the n8n endpoint).
+model ReplayNonce {
+  id        String   @id
+  expiresAt DateTime
+
+  @@index([expiresAt])
+}
+
+/// Registration form built by the organizer (Google-Forms style). One per event.
+model RegistrationForm {
+  id                  String    @id @default(uuid()) @db.Uuid
+  eventId             String    @unique @db.Uuid
+  enabled             Boolean   @default(false)
+  description         String?
+  confirmationMessage String?
+  /// When true, each registration waits for an organizer decision; otherwise it is approved automatically.
+  requireApproval     Boolean   @default(false)
+  /// Maximum number of active registrations; null = unlimited.
+  capacity            Int?
+  /// Optional earlier cut-off than the event's registration deadline.
+  closesAt            DateTime?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  event         Event               @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  fields        RegistrationField[]
+  registrations Registration[]
+}
+
+model RegistrationField {
+  id       String                @id @default(uuid()) @db.Uuid
+  formId   String                @db.Uuid
+  position Int
+  type     RegistrationFieldType
+  label    String
+  helpText String?
+  required Boolean               @default(false)
+  /// Choices for choice/dropdown fields.
+  options  Json?
+  /// Optional limits: { maxLength, min, max }.
+  rules    Json?
+  form     RegistrationForm      @relation(fields: [formId], references: [id], onDelete: Cascade)
+
+  @@index([formId, position])
+}
+
+/// One registration per user per event. `answers` keep a snapshot of each question so history survives later form edits.
+model Registration {
+  id           String             @id @default(uuid()) @db.Uuid
+  eventId      String             @db.Uuid
+  formId       String             @db.Uuid
+  userId       String             @db.Uuid
+  status       RegistrationStatus @default(SUBMITTED)
+  answers      Json
+  decidedAt    DateTime?
+  decidedById  String?            @db.Uuid
+  /// Optional message from the organizer, shown to the participant with the decision.
+  decisionNote String?
+  consentAt    DateTime           @default(now())
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+
+  event Event            @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  form  RegistrationForm @relation(fields: [formId], references: [id], onDelete: Cascade)
+  user  User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, userId])
+  @@index([eventId, status])
+  @@index([userId])
+}

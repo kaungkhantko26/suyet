@@ -1,0 +1,77 @@
+# Rendered by the nginx image from environment variables (SERVER_NAME). Runs unprivileged on 8080/8443.
+server_tokens off;
+limit_req_zone  $binary_remote_addr zone=general:10m rate=20r/s;
+limit_req_zone  $binary_remote_addr zone=auth:10m rate=5r/s;
+limit_conn_zone $binary_remote_addr zone=perip:10m;
+
+client_header_timeout 15s;
+client_body_timeout   15s;
+send_timeout          30s;
+keepalive_timeout     30s;
+large_client_header_buffers 4 8k;
+
+# Unknown Host headers get nothing (blocks host-header attacks and scanners hitting the bare IP).
+server { listen 8080 default_server; return 444; }
+server { listen 8443 ssl default_server; ssl_reject_handshake on; }
+
+server {
+  listen 8080;
+  server_name ${SERVER_NAME};
+  location /.well-known/acme-challenge/ { root /var/www/certbot; }
+  location / { return 301 https://$host$request_uri; }
+}
+
+server {
+  listen 8443 ssl;
+  http2 on;
+  server_name ${SERVER_NAME};
+
+  ssl_certificate     /etc/letsencrypt/live/${SERVER_NAME}/fullchain.pem;
+  ssl_certificate_key /etc/letsencrypt/live/${SERVER_NAME}/privkey.pem;
+  ssl_protocols TLSv1.2 TLSv1.3;
+  ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305;
+  ssl_prefer_server_ciphers off;
+  ssl_session_cache shared:SSL:10m;
+  ssl_session_timeout 1d;
+  ssl_session_tickets off;
+  ssl_stapling on;
+  ssl_stapling_verify on;
+  resolver 1.1.1.1 9.9.9.9 valid=300s;
+
+  # Only enable after confirming HTTPS works on every intended hostname (remove it again if you must roll back).
+  add_header Strict-Transport-Security "max-age=63072000; includeSubDomains" always;
+
+  client_max_body_size 6m;      # banner/avatar uploads (4 MB image + form overhead)
+  limit_conn perip 40;
+  gzip on;
+  gzip_types text/css application/javascript application/json image/svg+xml;
+
+  location ~ /\.(?!well-known) { deny all; }
+
+  # Headers the app trusts are SET here, never appended: clients cannot forge their address or request id.
+  # (Next.js sets x-nonce itself; a client-supplied one is overwritten.)
+  proxy_http_version 1.1;
+  proxy_set_header Host              $host;
+  proxy_set_header X-Real-IP         $remote_addr;
+  proxy_set_header X-Forwarded-For   $remote_addr;
+  proxy_set_header X-Forwarded-Proto $scheme;
+  proxy_set_header X-Request-Id      $request_id;
+  proxy_set_header X-Nonce           "";
+  proxy_connect_timeout 5s;
+  proxy_read_timeout    60s;
+  proxy_send_timeout    30s;
+
+  # Machine endpoint (n8n). If n8n runs on a fixed host, restrict it:  allow <n8n-ip>; deny all;
+  location /api/internal/ { limit_req zone=auth burst=20 nodelay; proxy_pass http://web:3000; }
+  location /auth/         { limit_req zone=auth burst=20 nodelay; proxy_pass http://web:3000; }
+
+  location /_next/static/ {
+    proxy_pass http://web:3000;
+    add_header Cache-Control "public, max-age=31536000, immutable";
+  }
+
+  location / {
+    limit_req zone=general burst=60 nodelay;
+    proxy_pass http://web:3000;
+  }
+}

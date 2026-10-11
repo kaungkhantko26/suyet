@@ -1,0 +1,152 @@
+# Hardened self-hosted stack. Validate with `docker compose config` before first use.
+#   docker compose up -d --build            # db → migrate → web + worker + nginx
+#   docker compose --profile redis up -d    # also start the optional Redis
+# Only nginx publishes ports. PostgreSQL/Redis/web/worker are never reachable from the host or the internet.
+name: letstech-events
+
+x-hardened: &hardened
+  security_opt: ["no-new-privileges:true"]
+  cap_drop: ["ALL"]
+  restart: unless-stopped
+  pids_limit: 256
+  logging: { driver: json-file, options: { max-size: "10m", max-file: "5" } }
+
+x-app-env: &app-env
+  APP_URL: ${APP_URL:?set APP_URL in .env}
+  SESSION_SECRET: ${SESSION_SECRET:?}
+  MFA_ENCRYPTION_KEY: "${MFA_ENCRYPTION_KEY:?generate with openssl rand -base64 32}"
+  INTERNAL_API_SECRET: ${INTERNAL_API_SECRET:?}
+  INTERNAL_API_SECRET_PREVIOUS: ${INTERNAL_API_SECRET_PREVIOUS:-}
+  INTERNAL_AUTH_MODE: ${INTERNAL_AUTH_MODE:-hmac}
+  CRON_SECRET: ${CRON_SECRET:?}
+  CSP_MODE: ${CSP_MODE:-enforce}
+  HIBP_ENABLED: ${HIBP_ENABLED:-1}
+  GOOGLE_WEB_RISK_API_KEY: ${GOOGLE_WEB_RISK_API_KEY:-}
+  ALERT_WEBHOOK_URL: ${ALERT_WEBHOOK_URL:-}
+  CONTACT_EMAIL: ${CONTACT_EMAIL:-}
+  SMTP_HOST: ${SMTP_HOST:-}
+  SMTP_PORT: ${SMTP_PORT:-587}
+  SMTP_USER: ${SMTP_USER:-}
+  SMTP_PASS: ${SMTP_PASS:-}
+  SMTP_FROM: ${SMTP_FROM:-}
+  STORAGE_DRIVER: ${STORAGE_DRIVER:-local}
+  UPLOAD_DIR: /data/uploads
+  S3_ENDPOINT: ${S3_ENDPOINT:-}
+  S3_REGION: ${S3_REGION:-}
+  S3_BUCKET: ${S3_BUCKET:-}
+  S3_ACCESS_KEY: ${S3_ACCESS_KEY:-}
+  S3_SECRET_KEY: ${S3_SECRET_KEY:-}
+  S3_PUBLIC_URL: ${S3_PUBLIC_URL:-}
+
+services:
+  db:
+    <<: *hardened
+    image: postgres:16.6-alpine
+    environment:
+      POSTGRES_USER: postgres          # bootstrap/admin identity: used for backups only, never by the app
+      POSTGRES_PASSWORD: ${POSTGRES_ADMIN_PASSWORD:?}
+      POSTGRES_DB: letstech_events
+      APP_DB_PASSWORD: ${APP_DB_PASSWORD:?}
+      MIGRATOR_DB_PASSWORD: ${MIGRATOR_DB_PASSWORD:?}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./docker/postgres/10-roles.sh:/docker-entrypoint-initdb.d/10-roles.sh:ro
+    cap_add: [CHOWN, SETUID, SETGID, DAC_OVERRIDE, FOWNER]   # required by the postgres entrypoint
+    tmpfs: ["/run/postgresql", "/tmp"]
+    mem_limit: 1g
+    cpus: 1.5
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d letstech_events"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    networks: [backend]                # internal network: no route to the host or internet
+
+  migrate:
+    build: { context: ., target: tools }
+    command: sh -c "npx prisma migrate deploy && npx tsx scripts/db-roles.ts grants && npx tsx prisma/seed.ts"
+    environment:
+      <<: *app-env
+      NODE_ENV: production
+      HOME: /tmp
+      DATABASE_URL: postgresql://letstech_migrator:${MIGRATOR_DB_PASSWORD}@db:5432/letstech_events   # schema owner: used ONLY here
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+    depends_on:
+      db: { condition: service_healthy }
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: ["ALL"]
+    read_only: true
+    tmpfs: ["/tmp"]
+    restart: "no"
+    networks: [backend]
+
+  web:
+    <<: *hardened
+    build: { context: ., target: web }
+    environment:
+      <<: *app-env
+      DATABASE_URL: postgresql://letstech_app:${APP_DB_PASSWORD}@db:5432/letstech_events    # runtime role: DML only, no DDL
+    volumes:
+      - uploads:/data/uploads
+    read_only: true
+    tmpfs: ["/tmp", "/app/.next/cache"]
+    mem_limit: 768m
+    cpus: 1.0
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+    networks: [backend, edge, egress]   # egress: SMTP / breached-password check / URL reputation API
+
+  worker:
+    <<: *hardened
+    build: { context: ., target: tools }
+    environment:
+      <<: *app-env
+      NODE_ENV: production
+      HOME: /tmp
+      DATABASE_URL: postgresql://letstech_app:${APP_DB_PASSWORD}@db:5432/letstech_events
+    read_only: true
+    tmpfs: ["/tmp"]
+    mem_limit: 512m
+    cpus: 0.5
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+    networks: [backend, egress]         # egress: source reachability checks (SSRF-guarded in code; also firewall it, see docs)
+
+  redis:
+    <<: *hardened
+    image: redis:7.4.1-alpine
+    profiles: ["redis"]
+    command: ["redis-server", "--save", "", "--appendonly", "no", "--protected-mode", "yes"]
+    read_only: true
+    networks: [backend]
+
+  nginx:
+    <<: *hardened
+    image: nginxinc/nginx-unprivileged:1.27.3-alpine   # runs as non-root on 8080/8443
+    ports:
+      - "80:8080"
+      - "443:8443"
+    volumes:
+      - ./nginx/events.conf.template:/etc/nginx/templates/default.conf.template:ro
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+      - certbot-webroot:/var/www/certbot
+    environment:
+      SERVER_NAME: ${SERVER_NAME:?set SERVER_NAME (e.g. events.example.com) in .env}
+    read_only: true
+    tmpfs: ["/tmp", "/etc/nginx/conf.d:uid=101,gid=101"]
+    mem_limit: 128m
+    cpus: 0.5
+    depends_on: [web]
+    networks: [edge]
+
+networks:
+  backend:
+    internal: true        # db/redis/migrate: isolated from the internet and the host
+  edge:                   # nginx ↔ web only
+  egress:                 # outbound-only for services that must call external APIs
+
+volumes:
+  pgdata:
+  uploads:
+  certbot-webroot:

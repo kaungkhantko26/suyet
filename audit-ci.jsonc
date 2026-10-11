@@ -1,0 +1,10 @@
+{
+  // Release policy: fail on HIGH or CRITICAL advisories in production dependencies.
+  "high": true,
+  "omit": ["dev"],
+  "report-type": "summary",
+  // Accepted risk, reviewed 2026-10-09, re-review by 2026-12-31 (see docs/SECURITY_CHECKLIST.md):
+  // GHSA-ggr8-5vv4-36mx (deepmerge-ts <8, stack exhaustion on recursive object graphs) is pulled in only by the Prisma CLI's
+  // config loader (build/migration time, trusted input). No fixed Prisma release exists yet; runtime request data never reaches it.
+  "allowlist": ["GHSA-ggr8-5vv4-36mx"]
+}

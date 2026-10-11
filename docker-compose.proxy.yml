@@ -1,0 +1,10 @@
+# Override for hosts that already run a shared TLS-terminating reverse proxy (e.g. a
+# box with Caddy fronting other sites). nginx stays internal-only, plain HTTP, on a loopback
+# port; the shared proxy adds the public hostname + TLS and forwards to it.
+#   docker compose -f docker-compose.yml -f docker-compose.proxy.yml up -d --build
+services:
+  nginx:
+    ports: !override
+      - "${APP_LOOPBACK_PORT:-3100}:8080"
+    volumes: !override
+      - ./nginx/behind-proxy.conf.template:/etc/nginx/templates/default.conf.template:ro

@@ -1,0 +1,29 @@
+name: Deploy (manual, gated)
+# Production deploys are manual and run in the protected "production" environment, which requires an approving reviewer.
+# Secrets are available ONLY here (never to pull-request workflows). Rollback: re-run with the previous tag/commit.
+on:
+  workflow_dispatch:
+    inputs:
+      ref: { description: "Tag or commit SHA to deploy", required: true }
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-24.04
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+        with: { ref: "${{ inputs.ref }}" }
+      - name: Deploy over SSH (restricted deploy key, forced command on the server)
+        env:
+          SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          SSH_HOST: ${{ secrets.DEPLOY_HOST }}
+          KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/id_deploy && chmod 600 ~/.ssh/id_deploy
+          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+          # The server-side authorized_keys entry restricts this key to a single deploy script (command="…",restrict).
+          ssh -i ~/.ssh/id_deploy -o StrictHostKeyChecking=yes "deploy@$SSH_HOST" "${{ inputs.ref }}"

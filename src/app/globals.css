@@ -1,0 +1,109 @@
+@import "tailwindcss";
+
+/* Brand tokens. Warm paper + ink;
+   blue is the single interactive accent, purple/teal are used sparingly. */
+:root {
+  --bg: #f3f0e8;
+  --surface: #ffffff;
+  --surface-2: #faf8f3;
+  --fg: #111416;
+  --muted: #5a6068;
+  --border: #d8d2c6;
+  --primary: #2563eb;
+  --primary-hover: #1d4ed8;
+  --primary-fg: #ffffff;
+  --purple: #8b5cf6;
+  --teal: #14b8a6;
+  --success: #15803d;
+  --warning: #b45309;
+  --error: #dc2626;
+  --success-bg: #dcfce7;
+  --warning-bg: #fef3c7;
+  --error-bg: #fee2e2;
+  --info-bg: #dbeafe;
+  --ring: #2563eb;
+  color-scheme: light;
+}
+:root[data-theme="dark"] {
+  --bg: #09090b;
+  --surface: #18181b;
+  --surface-2: #1f1f23;
+  --fg: #fafafa;
+  --muted: #a1a1aa;
+  --border: #27272a;
+  --primary: #3b82f6;
+  --primary-hover: #60a5fa;
+  --primary-fg: #08090c;
+  --success: #4ade80;
+  --warning: #fbbf24;
+  --error: #f87171;
+  --success-bg: #052e16;
+  --warning-bg: #2a1d03;
+  --error-bg: #2d0a0a;
+  --info-bg: #0b1b3d;
+  --ring: #60a5fa;
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #09090b; --surface: #18181b; --surface-2: #1f1f23; --fg: #fafafa; --muted: #a1a1aa; --border: #27272a;
+    --primary: #3b82f6; --primary-hover: #60a5fa; --primary-fg: #08090c;
+    --success: #4ade80; --warning: #fbbf24; --error: #f87171;
+    --success-bg: #052e16; --warning-bg: #2a1d03; --error-bg: #2d0a0a; --info-bg: #0b1b3d; --ring: #60a5fa;
+    color-scheme: dark;
+  }
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-fg: var(--fg);
+  --color-muted: var(--muted);
+  --color-border: var(--border);
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-fg: var(--primary-fg);
+  --color-purple: var(--purple);
+  --color-teal: var(--teal);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-error: var(--error);
+  --color-success-bg: var(--success-bg);
+  --color-warning-bg: var(--warning-bg);
+  --color-error-bg: var(--error-bg);
+  --color-info-bg: var(--info-bg);
+  --font-sans: var(--font-inter), var(--font-myanmar), system-ui, sans-serif;
+  --font-serif: var(--font-serif-display), Georgia, serif;
+  --radius-card: 16px;
+  --radius-control: 10px;
+  --shadow-card: 0 1px 2px rgb(17 20 22 / 0.05), 0 1px 1px rgb(17 20 22 / 0.03);
+  --shadow-raised: 0 6px 24px -8px rgb(17 20 22 / 0.18);
+}
+
+html { scroll-behavior: smooth; }
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+/* Burmese needs more line height; Noto Sans Myanmar has tall stacked glyphs. */
+html[lang="my"] body { line-height: 1.85; }
+html[lang="my"] h1, html[lang="my"] h2, html[lang="my"] h3 { line-height: 1.5; letter-spacing: 0; }
+html[lang="my"] .font-serif { font-family: var(--font-myanmar), serif; }
+
+:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; border-radius: 6px; }
+
+.eyebrow { font-size: 0.75rem; letter-spacing: 0.12em; text-transform: uppercase; font-weight: 600; color: var(--muted); }
+html[lang="my"] .eyebrow { letter-spacing: 0; text-transform: none; font-size: 0.8125rem; }
+
+@keyframes shimmer { 100% { transform: translateX(100%); } }
+.skeleton { position: relative; overflow: hidden; background: color-mix(in srgb, var(--fg) 8%, transparent); border-radius: 8px; }
+.skeleton::after { content: ""; position: absolute; inset: 0; transform: translateX(-100%); background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--fg) 8%, transparent), transparent); animation: shimmer 1.4s infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
+  .skeleton::after { display: none; }
+}

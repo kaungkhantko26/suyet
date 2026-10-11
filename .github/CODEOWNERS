@@ -1,0 +1,19 @@
+# Security-sensitive paths require review from the security owners (set the real team/handles in GitHub).
+/src/lib/auth/                @letstech/security
+/src/lib/security/            @letstech/security
+/src/lib/password.ts          @letstech/security
+/src/lib/ssrf.ts              @letstech/security
+/src/lib/services/auth.ts     @letstech/security
+/src/lib/services/mfa.ts      @letstech/security
+/src/proxy.ts                 @letstech/security
+/src/app/actions/admin.ts     @letstech/security
+/src/app/api/internal/        @letstech/security
+/prisma/                      @letstech/security
+/prisma/migrations/           @letstech/security @letstech/platform
+/next.config.ts               @letstech/security
+/Dockerfile                   @letstech/platform
+/docker-compose.yml           @letstech/platform
+/docker/                      @letstech/platform
+/nginx/                       @letstech/platform
+/scripts/backup.sh            @letstech/platform
+/.github/                     @letstech/platform

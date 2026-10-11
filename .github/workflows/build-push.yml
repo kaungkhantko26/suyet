@@ -1,0 +1,40 @@
+name: Build and push images
+# Builds the "web" and "tools" Docker targets and pushes them to GHCR, so the VPS only ever
+# has to `docker compose pull` + restart — no build (and its RAM spike) happens on that box.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: build-push-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        target: [web, tools]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          target: ${{ matrix.target }}
+          push: true
+          cache-from: type=gha,scope=${{ matrix.target }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.target }}
+          tags: |
+            ghcr.io/${{ github.repository }}-${{ matrix.target }}:latest
+            ghcr.io/${{ github.repository }}-${{ matrix.target }}:${{ github.sha }}
