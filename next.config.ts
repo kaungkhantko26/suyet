@@ -22,7 +22,7 @@ const devOrigins = [
 
 const config: NextConfig = {
   allowedDevOrigins: devOrigins,
-  images: { remotePatterns: s3 ? [{ protocol: s3.protocol.replace(":", "") as "http" | "https", hostname: s3.hostname, port: s3.port }] : [], localPatterns: [{ pathname: "/media/**" }] },
+  images: { remotePatterns: s3 ? [{ protocol: s3.protocol.replace(":", "") as "http" | "https", hostname: s3.hostname, port: s3.port }] : [], localPatterns: [{ pathname: "/media/**" }, { pathname: "/logo-mark.png" }] },
   output: process.env.NEXT_STANDALONE === "1" ? "standalone" : undefined, // set by the Docker build
   poweredByHeader: false,
   serverExternalPackages: ["@prisma/client"],
