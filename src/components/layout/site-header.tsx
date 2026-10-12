@@ -10,7 +10,7 @@ import { LanguageSwitcher } from "./language-switcher";
 import { NavLinks } from "./nav-links";
 import { UserMenuLink } from "./user-menu-link";
 import { DetailsDismiss } from "./details-dismiss";
-import { MobileNav } from "./mobile-nav";
+import { BottomNav } from "./bottom-nav";
 import { ThemeToggle } from "./theme-toggle";
 import { Wordmark } from "./logo";
 
@@ -24,21 +24,38 @@ export async function SiteHeader() {
   ];
   const submitHref = user && can(user.role, "event.submit") ? "/organizer/events/new" : "/submit-event";
   return (
-    <header className="sticky top-0 z-40 border-b border-border bg-bg/90 backdrop-blur">
-      <DetailsDismiss />
-      <Container className="flex h-16 items-center gap-6">
-        <Link href="/" aria-label={t("brand.name")} className="shrink-0"><Wordmark /></Link>
-        <NavLinks links={links} />
-        <div className="ml-auto flex items-center gap-2 lg:ml-0">
-          <div className="hidden items-center gap-2 lg:flex">
-            {(!user || can(user.role, "event.submit")) && <ButtonLink href={submitHref} variant="outline" size="sm">{t("nav.submit")}</ButtonLink>}
-            <LanguageSwitcher />
-            <ThemeToggle />
-            {user ? <UserMenu name={user.name} email={user.email} role={user.role} t={t} /> : <ButtonLink href="/auth/login" variant="dark" size="sm">{t("nav.login")}</ButtonLink>}
+    <>
+      <header className="sticky top-0 z-40 border-b border-border bg-bg/90 backdrop-blur">
+        <DetailsDismiss />
+        <Container className="flex h-16 items-center gap-6">
+          <Link href="/" aria-label={t("brand.name")} className="shrink-0"><Wordmark /></Link>
+          <NavLinks links={links} />
+          <div className="ml-auto flex items-center gap-2 lg:ml-0">
+            <div className="hidden items-center gap-2 lg:flex">
+              {(!user || can(user.role, "event.submit")) && <ButtonLink href={submitHref} variant="outline" size="sm">{t("nav.submit")}</ButtonLink>}
+              <LanguageSwitcher />
+              <ThemeToggle />
+              {user ? <UserMenu name={user.name} email={user.email} role={user.role} t={t} /> : <ButtonLink href="/auth/login" variant="dark" size="sm">{t("nav.login")}</ButtonLink>}
+            </div>
+            <div className="lg:hidden"><ThemeToggle /></div>
           </div>
-          <MobileNav links={links.concat({ href: "/submit-event", label: t("nav.submit") })} pill={<LanguageSwitcher variant="pill" />}>
+        </Container>
+      </header>
+
+      <BottomNav
+        links={links}
+        profileLabel={user ? t("nav.profile") : t("nav.login")}
+        avatarInitial={user?.name.slice(0, 1).toUpperCase()}
+        sheetTitle={user ? user.name : t("nav.menu")}
+        sheet={
+          <>
             {user ? (
               <>
+                <div className="rounded-[14px] border border-border bg-surface-2/60 px-4 py-3">
+                  <p className="truncate text-sm font-semibold">{user.name}</p>
+                  <p className="truncate text-xs text-muted">{user.email}</p>
+                  <span className="mt-2 inline-block rounded-full bg-fg/8 px-2 py-0.5 text-[11px] font-medium tracking-wide uppercase">{user.role}</span>
+                </div>
                 <div className="grid grid-cols-2 gap-3">
                   <ButtonLink href="/dashboard" variant="outline" className="min-h-14 rounded-full text-base"><LayoutDashboard className="size-4" aria-hidden="true" />{t("nav.dashboard")}</ButtonLink>
                   {can(user.role, "admin.access") ? <ButtonLink href="/admin" variant="outline" className="min-h-14 rounded-full text-base"><Shield className="size-4" aria-hidden="true" />{t("nav.admin")}</ButtonLink>
@@ -52,10 +69,10 @@ export async function SiteHeader() {
             )}
             <LanguageSwitcher variant="wide" />
             {(!user || can(user.role, "event.submit")) && <ButtonLink href={submitHref} size="lg" className="min-h-14 rounded-full text-base shadow-(--shadow-raised)">{t("hero.ctaSecondary")}<ArrowRight className="size-4" aria-hidden="true" /></ButtonLink>}
-          </MobileNav>
-        </div>
-      </Container>
-    </header>
+          </>
+        }
+      />
+    </>
   );
 }
 

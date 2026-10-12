@@ -16,6 +16,7 @@ export const en = {
     organizerArea: "Organizer",
     admin: "Admin",
     menu: "Menu",
+    profile: "Profile",
     close: "Close",
     language: "Language",
     skip: "Skip to content",

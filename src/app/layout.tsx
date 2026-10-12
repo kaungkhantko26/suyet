@@ -45,7 +45,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const dict = dictionaries[locale];
   return (
     <html lang={locale} className={`${inter.variable} ${myanmar.variable} ${serif.variable}`} suppressHydrationWarning>
-      <body className="flex min-h-dvh flex-col">
+      <body className="flex min-h-dvh flex-col pb-20 lg:pb-0">
         <Script id="theme-init" strategy="beforeInteractive" nonce={nonce}>{themeScript}</Script>
         <I18nProvider dict={dict} locale={locale}>
           <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:rounded-[10px] focus:bg-fg focus:px-4 focus:py-2 focus:text-bg">{dict.nav.skip}</a>

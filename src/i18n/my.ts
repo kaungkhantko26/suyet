@@ -18,6 +18,7 @@ export const my: Dictionary = {
     organizerArea: "စည်းရုံးသူ",
     admin: "စီမံခန့်ခွဲသူ",
     menu: "မီနူး",
+    profile: "ပရိုဖိုင်",
     close: "ပိတ်ရန်",
     language: "ဘာသာစကား",
     skip: "အကြောင်းအရာသို့ ကျော်ရန်",
