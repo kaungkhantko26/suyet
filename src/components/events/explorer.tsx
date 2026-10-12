@@ -27,18 +27,21 @@ async function Results({ filters, basePath }: { filters: Filters; basePath: stri
   if (filters.q && filters.page === 1) await track("SEARCH", { query: filters.q });
   if (items.length === 0) {
     return (
-      <EmptyState
-        icon={<SearchX className="size-10" aria-hidden="true" />}
-        title={t("common.noResults")}
-        body={t("common.tryAdjusting")}
-        action={<ButtonLink href={basePath} variant="outline">{t("common.resetFilters")}</ButtonLink>}
-      />
+      <>
+        <div className="mb-4 flex items-center justify-between gap-3"><p className="text-sm text-muted" aria-live="polite">{t("common.resultsCount", { count: total })}</p><SortSelect value={filters.sort} /></div>
+        <EmptyState
+          icon={<SearchX className="size-10" aria-hidden="true" />}
+          title={t("common.noResults")}
+          body={t("common.tryAdjusting")}
+          action={<ButtonLink href={basePath} variant="outline">{t("common.resetFilters")}</ButtonLink>}
+        />
+      </>
     );
   }
   const params = filtersToSearchParams(filters);
   return (
     <>
-      <p className="mb-4 text-sm text-muted" aria-live="polite">{t("common.resultsCount", { count: total })}</p>
+      <div className="mb-4 flex items-center justify-between gap-3"><p className="text-sm text-muted" aria-live="polite">{t("common.resultsCount", { count: total })}</p><SortSelect value={filters.sort} /></div>
       <EventGrid events={items} t={t} savedIds={savedIds} authed={!!user} />
       <Pagination page={filters.page} pages={pages} basePath={basePath} params={params} t={t} />
     </>
@@ -71,7 +74,6 @@ export async function Explorer({ filters, basePath, hide, title, description }: 
           organizers={organizers.map((o) => ({ value: o.slug, label: o.name }))}
         />
         <section aria-label={title}>
-          <div className="mb-4 flex justify-end"><SortSelect value={filters.sort} /></div>
           <Suspense key={key} fallback={<EventGridSkeleton />}>
             <Results filters={filters} basePath={basePath} />
           </Suspense>

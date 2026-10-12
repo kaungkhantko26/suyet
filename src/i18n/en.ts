@@ -200,6 +200,7 @@ export const en = {
     report: "Report incorrect information",
     sourceUrl: "Source",
     onlineLink: "Online link",
+    openInMaps: "Open in Maps",
     venue: "Venue",
     address: "Address",
     loginToSave: "Log in to save events",

@@ -202,6 +202,7 @@ export const my: Dictionary = {
     report: "မှားယွင်းသောအချက်အလက် တိုင်ကြားရန်",
     sourceUrl: "ရင်းမြစ်",
     onlineLink: "အွန်လိုင်းလင့်ခ်",
+    openInMaps: "မြေပုံတွင်ဖွင့်ရန်",
     venue: "ကျင်းပရာနေရာ",
     address: "လိပ်စာ",
     loginToSave: "ပွဲများ သိမ်းရန် ဝင်ရောက်ပါ",
