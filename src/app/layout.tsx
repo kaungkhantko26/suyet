@@ -24,12 +24,15 @@ export const metadata: Metadata = {
   openGraph: { type: "website", siteName: config.brandName, locale: "en_US" },
   twitter: { card: "summary_large_image" },
   alternates: { canonical: "/" },
+  // iOS ignores the web manifest for "Add to Home Screen" and needs these instead.
+  appleWebApp: { capable: true, statusBarStyle: "default", title: config.brandName },
 };
 
 export const viewport: Viewport = {
   themeColor: [{ media: "(prefers-color-scheme: light)", color: "#f3f0e8" }, { media: "(prefers-color-scheme: dark)", color: "#09090b" }],
   width: "device-width",
   initialScale: 1,
+  viewportFit: "cover",
 };
 
 // Production: register the service worker. Development: remove any worker (and its caches) so un-hashed dev chunks are never served stale.
@@ -45,7 +48,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const dict = dictionaries[locale];
   return (
     <html lang={locale} className={`${inter.variable} ${myanmar.variable} ${serif.variable}`} suppressHydrationWarning>
-      <body className="flex min-h-dvh flex-col pb-20 lg:pb-0">
+      <body className="flex min-h-dvh flex-col pb-24 lg:pb-0">
         <Script id="theme-init" strategy="beforeInteractive" nonce={nonce}>{themeScript}</Script>
         <I18nProvider dict={dict} locale={locale}>
           <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:rounded-[10px] focus:bg-fg focus:px-4 focus:py-2 focus:text-bg">{dict.nav.skip}</a>

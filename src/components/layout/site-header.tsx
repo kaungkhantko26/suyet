@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, ChevronDown, LayoutDashboard, LogOut, Shield, Building2 } from "lucide-react";
+import { ArrowRight, Bell, Bookmark, ChevronDown, ClipboardList, LayoutDashboard, LogOut, Shield, ShieldCheck, SlidersHorizontal, Building2, UserRound } from "lucide-react";
 import { logoutAction } from "@/app/actions/auth";
 import { getCurrentUser } from "@/lib/auth/session";
 import { can } from "@/lib/auth/permissions";
@@ -56,13 +56,18 @@ export async function SiteHeader() {
                   <p className="truncate text-xs text-muted">{user.email}</p>
                   <span className="mt-2 inline-block rounded-full bg-fg/8 px-2 py-0.5 text-[11px] font-medium tracking-wide uppercase">{user.role}</span>
                 </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <ButtonLink href="/dashboard" variant="outline" className="min-h-14 rounded-full text-base"><LayoutDashboard className="size-4" aria-hidden="true" />{t("nav.dashboard")}</ButtonLink>
-                  {can(user.role, "admin.access") ? <ButtonLink href="/admin" variant="outline" className="min-h-14 rounded-full text-base"><Shield className="size-4" aria-hidden="true" />{t("nav.admin")}</ButtonLink>
-                    : can(user.role, "event.submit") ? <ButtonLink href="/organizer/dashboard" variant="outline" className="min-h-14 rounded-full text-base"><Building2 className="size-4" aria-hidden="true" />{t("nav.organizerArea")}</ButtonLink>
-                    : <form action={logoutAction}><Button type="submit" variant="outline" className="min-h-14 w-full rounded-full text-base"><LogOut className="size-4" aria-hidden="true" />{t("nav.logout")}</Button></form>}
-                </div>
-                {user.role !== "STUDENT" && user.role !== "MODERATOR" && <form action={logoutAction}><Button type="submit" variant="ghost" className="w-full text-error"><LogOut className="size-4" aria-hidden="true" />{t("nav.logout")}</Button></form>}
+                <nav aria-label={t("nav.dashboard")} className="-mx-1 space-y-0.5">
+                  <SheetLink href="/dashboard"><LayoutDashboard className="size-4" aria-hidden="true" />{t("nav.dashboard")}</SheetLink>
+                  <SheetLink href="/dashboard/saved"><Bookmark className="size-4" aria-hidden="true" />{t("dashboard.saved")}</SheetLink>
+                  <SheetLink href="/dashboard/registrations"><ClipboardList className="size-4" aria-hidden="true" />{t("registration.myTitle")}</SheetLink>
+                  <SheetLink href="/dashboard/notifications"><Bell className="size-4" aria-hidden="true" />{t("dashboard.notifications")}</SheetLink>
+                  <SheetLink href="/dashboard/preferences"><SlidersHorizontal className="size-4" aria-hidden="true" />{t("dashboard.preferences")}</SheetLink>
+                  <SheetLink href="/dashboard/profile"><UserRound className="size-4" aria-hidden="true" />{t("dashboard.profile")}</SheetLink>
+                  <SheetLink href="/dashboard/security"><ShieldCheck className="size-4" aria-hidden="true" />{t("securityPage.title")}</SheetLink>
+                  {can(user.role, "event.submit") && <SheetLink href="/organizer/dashboard"><Building2 className="size-4" aria-hidden="true" />{t("nav.organizerArea")}</SheetLink>}
+                  {can(user.role, "admin.access") && <SheetLink href="/admin"><Shield className="size-4" aria-hidden="true" />{t("nav.admin")}</SheetLink>}
+                </nav>
+                <form action={logoutAction}><Button type="submit" variant="outline" className="w-full text-error"><LogOut className="size-4" aria-hidden="true" />{t("nav.logout")}</Button></form>
               </>
             ) : (
               <ButtonLink href="/auth/login" variant="outline" className="min-h-14 rounded-full text-base">{t("nav.login")}</ButtonLink>
@@ -73,6 +78,18 @@ export async function SiteHeader() {
         }
       />
     </>
+  );
+}
+
+function SheetLink({ href, children }: { href: string; children: React.ReactNode }) {
+  return (
+    <UserMenuLink
+      href={href}
+      className="flex min-h-12 w-full items-center gap-3 rounded-[10px] px-3 text-sm font-medium transition-colors hover:bg-fg/5 [&>svg]:text-muted"
+      activeClassName="bg-fg/8 text-fg [&>svg]:text-fg"
+    >
+      {children}
+    </UserMenuLink>
   );
 }
 

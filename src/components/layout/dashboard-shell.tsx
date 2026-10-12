@@ -13,11 +13,12 @@ export function DashboardShell({ title, items, children }: { title: string; item
   return (
     <Container className="py-8 sm:py-10">
       <div className="grid min-w-0 grid-cols-1 gap-8 lg:grid-cols-[220px_minmax(0,1fr)]">
-        <nav aria-label={title} className="min-w-0 lg:sticky lg:top-28 lg:self-start">
-          <p className="eyebrow mb-3 hidden lg:block">{title}</p>
-          <ul className="-mx-4 flex gap-1 overflow-x-auto px-4 pb-1 lg:mx-0 lg:flex-col lg:overflow-visible lg:px-0">
+        {/* Desktop only: on mobile these sections are reached from the Profile tab in the bottom nav instead. */}
+        <nav aria-label={title} className="hidden min-w-0 lg:sticky lg:top-28 lg:block lg:self-start">
+          <p className="eyebrow mb-3">{title}</p>
+          <ul className="flex flex-col">
             {items.map((i) => (
-              <li key={i.href} className="shrink-0">
+              <li key={i.href}>
                 <Link href={i.href} aria-current={active(i) ? "page" : undefined} className={cn("flex min-h-11 items-center gap-2.5 rounded-[10px] px-3 text-sm font-medium whitespace-nowrap transition-colors", active(i) ? "bg-fg text-bg" : "text-muted hover:bg-fg/5 hover:text-fg")}>
                   <span aria-hidden="true" className="[&>svg]:size-4">{i.icon}</span>{i.label}
                 </Link>
