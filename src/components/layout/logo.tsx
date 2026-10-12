@@ -3,7 +3,7 @@ import { cn } from "@/lib/cn";
 
 /** Official "SY" ribbon monogram. */
 export function LogoMark({ className }: { className?: string }) {
-  return <Image src="/logo-mark.png" alt="" width={384} height={256} priority className={cn("h-7 w-auto", className)} aria-hidden="true" />;
+  return <Image src="/logo-mark.png" alt="" width={384} height={256} priority className={cn("h-11 w-auto", className)} aria-hidden="true" />;
 }
 
 /** Product name. Temporary: "Su Yet" for now — change later as needed (keep in sync with config.brandName). */
