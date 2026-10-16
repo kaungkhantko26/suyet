@@ -6,6 +6,10 @@ export const en = {
     parentTagline: "A project under LetsTech",
     credit: "Built by LetsTech Club students",
   },
+  install: {
+    cta: "Install app",
+    iosHint: "On iPhone/iPad: tap Share, then \"Add to Home Screen\".",
+  },
   nav: {
     explore: "Explore",
     hackathons: "Hackathons",

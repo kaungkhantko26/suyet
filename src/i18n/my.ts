@@ -8,6 +8,10 @@ export const my: Dictionary = {
     parentTagline: "LetsTech အောက်ရှိ စီမံကိန်းတစ်ခု",
     credit: "LetsTech Club ကျောင်းသားများမှ တည်ဆောက်ထားသည်",
   },
+  install: {
+    cta: "အက်ပ်ထည့်သွင်းရန်",
+    iosHint: "iPhone/iPad တွင်: Share ကိုနှိပ်ပြီး \"Add to Home Screen\" ကိုရွေးပါ။",
+  },
   nav: {
     explore: "ရှာဖွေရန်",
     hackathons: "ဟက်ကာသွန်များ",

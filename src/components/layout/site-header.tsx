@@ -11,6 +11,7 @@ import { NavLinks } from "./nav-links";
 import { UserMenuLink } from "./user-menu-link";
 import { DetailsDismiss } from "./details-dismiss";
 import { BottomNav } from "./bottom-nav";
+import { InstallAppButton } from "./install-app-button";
 import { ThemeToggle } from "./theme-toggle";
 import { Wordmark } from "./logo";
 
@@ -72,6 +73,7 @@ export async function SiteHeader() {
             ) : (
               <ButtonLink href="/auth/login" variant="outline" className="min-h-14 rounded-full text-base">{t("nav.login")}</ButtonLink>
             )}
+            <InstallAppButton className="-mx-1" />
             <LanguageSwitcher variant="wide" />
             {(!user || can(user.role, "event.submit")) && <ButtonLink href={submitHref} size="lg" className="min-h-14 rounded-full text-base shadow-(--shadow-raised)">{t("hero.ctaSecondary")}<ArrowRight className="size-4" aria-hidden="true" /></ButtonLink>}
           </>
@@ -113,6 +115,7 @@ function UserMenu({ name, email, role, t }: { name: string; email: string; role:
           <UserMenuLink href="/dashboard" className={item} activeClassName={activeItem}><LayoutDashboard className="size-4 text-muted" aria-hidden="true" />{t("nav.dashboard")}</UserMenuLink>
           {can(role as never, "event.submit") && <UserMenuLink href="/organizer/dashboard" className={item} activeClassName={activeItem}><Building2 className="size-4 text-muted" aria-hidden="true" />{t("nav.organizerArea")}</UserMenuLink>}
           {can(role as never, "admin.access") && <UserMenuLink href="/admin" className={item} activeClassName={activeItem}><Shield className="size-4 text-muted" aria-hidden="true" />{t("nav.admin")}</UserMenuLink>}
+          <InstallAppButton className={item} />
         </div>
         <form action={logoutAction} className="border-t border-border p-1.5"><button type="submit" className={`${item} cursor-pointer text-error`}><LogOut className="size-4" aria-hidden="true" />{t("nav.logout")}</button></form>
       </div>

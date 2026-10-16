@@ -8,8 +8,10 @@ export async function SiteFooter() {
   const col = "mb-3 text-xs font-semibold tracking-wide text-muted uppercase";
   const link = "flex min-h-9 items-center text-sm hover:underline";
   return (
-    <footer className="mt-24 border-t border-border bg-surface">
-      <Container className="grid gap-10 py-14 md:grid-cols-[1.4fr_1fr_1fr_1fr]">
+    <footer className="mt-16 border-t border-border bg-surface sm:mt-24">
+      {/* Full link columns: desktop/tablet only. On phones, the bottom nav + Profile sheet already
+          cover these destinations, so repeating them here would just make the page long. */}
+      <Container className="hidden gap-10 py-14 md:grid md:grid-cols-[1.4fr_1fr_1fr_1fr]">
         <div className="max-w-sm">
           <Wordmark />
           <p className="mt-4 text-sm font-medium">{t("brand.tagline")}</p>
@@ -36,6 +38,19 @@ export async function SiteFooter() {
           <FooterNavLink href="/terms" className={link}>{t("footer.terms")}</FooterNavLink>
         </nav>
       </Container>
+
+      {/* Condensed version: phones only. */}
+      <Container className="py-8 md:hidden">
+        <Wordmark />
+        <p className="mt-3 text-xs text-muted">{t("brand.credit")}</p>
+        <nav aria-label={t("footer.legal")} className="mt-4 flex flex-wrap gap-x-4 gap-y-1 text-xs">
+          <FooterNavLink href="/about" className="hover:underline">{t("footer.about")}</FooterNavLink>
+          <FooterNavLink href="/contact" className="hover:underline">{t("footer.contact")}</FooterNavLink>
+          <FooterNavLink href="/privacy" className="hover:underline">{t("footer.privacy")}</FooterNavLink>
+          <FooterNavLink href="/terms" className="hover:underline">{t("footer.terms")}</FooterNavLink>
+        </nav>
+      </Container>
+
       <div className="border-t border-border">
         <Container className="flex flex-wrap items-center justify-between gap-2 py-5 text-xs text-muted">
           <span>© {new Date().getFullYear()} {t("brand.name")} · {t("brand.parentTagline")}</span>
