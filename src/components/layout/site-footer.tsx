@@ -14,6 +14,7 @@ export async function SiteFooter() {
           <Wordmark />
           <p className="mt-4 text-sm font-medium">{t("brand.tagline")}</p>
           <p className="mt-3 text-sm text-muted">{t("footer.rights")}</p>
+          <p className="mt-3 text-xs text-muted">{t("brand.credit")}</p>
         </div>
         <nav aria-label={t("footer.explore")}>
           <h2 className={col}>{t("footer.explore")}</h2>
@@ -37,7 +38,7 @@ export async function SiteFooter() {
       </Container>
       <div className="border-t border-border">
         <Container className="flex flex-wrap items-center justify-between gap-2 py-5 text-xs text-muted">
-          <span>© {new Date().getFullYear()} {t("brand.name")}</span>
+          <span>© {new Date().getFullYear()} {t("brand.name")} · {t("brand.parentTagline")}</span>
           <span>{t("common.mmt")} · UTC+06:30</span>
         </Container>
       </div>

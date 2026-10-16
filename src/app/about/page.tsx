@@ -15,6 +15,7 @@ export default async function AboutPage() {
         {block(t("pages.aboutMission"), t("pages.aboutMissionBody"))}
         {block(t("pages.aboutHow"), t("pages.aboutHowBody"))}
         {block(t("pages.aboutScope"), t("pages.aboutScopeBody"))}
+        {block(t("pages.aboutWho"), t("pages.aboutWhoBody"))}
       </div>
     </Container>
   );

@@ -1,6 +1,7 @@
 export const config = {
-  /** Product/display name. Temporary: "Su Yet" for now; change BRAND_NAME (or this default) later as needed. */
-  brandName: process.env.BRAND_NAME ?? "Su Yet",
+  /** Product/display name. MeetPoint is a project under LetsTech, built by LetsTech Club students. */
+  brandName: process.env.BRAND_NAME ?? "MeetPoint",
+  parentName: "LetsTech",
   appUrl: (process.env.APP_URL ?? "http://localhost:3000").replace(/\/$/, ""),
   timezone: "Asia/Yangon",
   utcOffset: "+06:30",

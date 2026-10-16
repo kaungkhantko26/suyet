@@ -1,7 +1,10 @@
 export const en = {
   brand: {
-    name: "Su Yet",
+    name: "MeetPoint",
     tagline: "Discover. Connect. Learn. Compete.",
+    parent: "LetsTech",
+    parentTagline: "A project under LetsTech",
+    credit: "Built by LetsTech Club students",
   },
   nav: {
     explore: "Explore",
@@ -191,7 +194,7 @@ export const en = {
     registerCta: "Register on official website",
     registerClosed: "Registration is closed",
     registerNone: "No registration link provided",
-    registerWarning: "You will leave Su Yet. We have not verified the destination site.",
+    registerWarning: "You will leave MeetPoint. We have not verified the destination site.",
     save: "Save event",
     unsave: "Remove from saved",
     share: "Share",
@@ -643,10 +646,10 @@ export const en = {
     contact: "Contact",
     privacy: "Privacy Policy",
     terms: "Terms of Service",
-    rights: "Listings are published by their organizers and are reviewed before publication, but Su Yet does not organize or endorse third-party events unless stated.",
+    rights: "Listings are published by their organizers and are reviewed before publication, but MeetPoint does not organize or endorse third-party events unless stated.",
   },
   pages: {
-    aboutTitle: "About Su Yet",
+    aboutTitle: "About MeetPoint",
     aboutLead: "Technology opportunities in Myanmar are scattered across Facebook pages, Telegram channels and campus notice boards. We bring them into one place.",
     aboutMission: "Our mission",
     aboutMissionBody: "Make technology opportunities accessible to every student in Myanmar, regardless of location, university, background, or financial situation.",
@@ -654,6 +657,8 @@ export const en = {
     aboutHowBody: "Every listing links to its official source. Organizer submissions and automated finds are reviewed by a person before publication. A Verified badge appears only after a reviewer has checked the official source.",
     aboutScope: "What we are",
     aboutScopeBody: "A discovery platform. We do not sell tickets. Registration always happens on the organizer's own site.",
+    aboutWho: "Who built this",
+    aboutWhoBody: "MeetPoint is a project under LetsTech, built by LetsTech Club students.",
     contactTitle: "Contact",
     contactBody: "Questions about a listing, or want to partner? Send us a note.",
     contactName: "Your name",
